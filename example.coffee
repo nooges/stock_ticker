@@ -152,15 +152,28 @@ printAll = ->
 printQuote()
 
 
+newTitle = 'Example'
 # Get quote data from CNBC
 getQuoteCNBC = (tickers) ->
-  url = 'http://quote.cnbc.com/quote-html-webservice/quote.htm?symbols=#{tickers}&requestMethod=quick&fund=1&noform=1&exthrs=1&extMode=ALL&extendedMask=2&output=json'
+  url = "http://quote.cnbc.com/quote-html-webservice/quote.htm?symbols=#{tickers}&requestMethod=quick&fund=1&noform=1&exthrs=1&extMode=ALL&extendedMask=2&output=json"
   yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + url + '"') + '&format=json&callback=?'
 
-
+  $.getJSON yql, (data) ->
+    items = []
+    data = $.parseJSON(data.query.results.body.p).QuickQuoteResult.QuickQuote
+    newTitle = "#{data.symbol}: #{r2(data.last)} #{r2(data.change)}"
 
 # Example code for ticker box
 #$("#ticker_box").html "Ticker box goes here"
 
 # Example code for quote table
 $("#quote_table").html "Quote table goes here"
+
+# Example code for putting ticker in title
+updateTitle = ->
+  ticker = 'SPY'
+  getQuoteCNBC ticker
+  $(document).attr('title', newTitle)
+  tid2 = setTimeout(updateTitle, timeout)
+
+updateTitle()
