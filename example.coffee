@@ -161,7 +161,10 @@ getQuoteCNBC = (tickers) ->
   $.getJSON yql, (data) ->
     items = []
     data = $.parseJSON(data.query.results.body.p).QuickQuoteResult.QuickQuote
-    newTitle = "#{data.symbol}: #{r2(data.last)} #{r2(data.change)}"
+    change = r2(data.change)
+    last = r2(data.last)
+    percentChange = Math.round(1e4 * +change / (+last - +change)) / 100
+    newTitle = "#{data.symbol}: #{last} #{change} (#{percentChange}%)"
 
 # Example code for ticker box
 #$("#ticker_box").html "Ticker box goes here"
