@@ -163,11 +163,22 @@ getQuoteCNBC = (tickers) ->
     data = $.parseJSON(data.query.results.body.p).QuickQuoteResult.QuickQuote
     change = r2(data.change)
     last = r2(data.last)
-    percentChange = Math.round(1e4 * +change / (+last - +change)) / 100
-    newTitle = "#{data.symbol}: #{last} #{change} (#{percentChange}%)"
+    change_pct = Math.round(1e4 * +change / (+last - +change)) / 100
+    if data.hasOwnProperty("ExtendedMktQuote")
+      ah_change = r2(data.ExtendedMktQuote.change)
+      ah_last = r2(data.ExtendedMktQuote.last)
+      ah_change_pct = Math.round(1e4 * +ah_change / (+ah_last - +ah_change)) / 100
+      newTitle = "#{data.symbol}: #{ah_last} #{ah_change} (#{ah_change_pct}%),  "
+      newTitle = newTitle + "[Close] #{last} #{change} (#{change_pct}%)"
+    else
+      change = r2(data.change)
+      last = r2(data.last)
+      newTitle = "#{data.symbol}: #{last} #{change} (#{percentChange}%)"
 
 # Example code for ticker box
 #$("#ticker_box").html "Ticker box goes here"
+# TODO: Grab the quote data for AAPL and VXAPL separately, then use certain
+# pieces to build ticker box
 
 # Example code for quote table
 $("#quote_table").html "Quote table goes here"
@@ -180,3 +191,7 @@ updateTitle = ->
   tid2 = setTimeout(updateTitle, timeout)
 
 updateTitle()
+
+# TODO List:
+# - Reformat CNBC and GF sources into common format
+# - Better handling of callbacks
