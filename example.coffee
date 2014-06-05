@@ -16,8 +16,6 @@ r2 = (n) ->
   (+n).toFixed 2
 
 timeout = 5e3
-tid = undefined
-items = []
 months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 # ISO 8601 Parser
@@ -80,8 +78,6 @@ printQuote = ->
     items = []
     data = $.parseJSON(data.query.results.body.p).QuickQuoteResult.QuickQuote
     $.each data, (key, datum) ->
-      console.log datum
-      time = undefined
       if datum.hasOwnProperty("reg_last_time")
         time = new Date(Date.parse(datum.reg_last_time))
       else
@@ -262,7 +258,29 @@ getQuotesCNBC = (tickers, callback_func) ->
 ##############################
 # Example code for quote table
 ##############################
-$("#quote_table").html "Quote table goes here"
+tableUpdateInterval = 5e3   # 5 seconds
+#$("#quote_table").html "Quote table goes here"
+
+updateTable = (quotes) ->
+  output = '<table>'
+  for ticker in quotes.tickers
+    quote = quotes[ticker]
+    output += "<tr>"
+    output += "<td>#{ticker}</td>"
+    output += "<td>#{quote.last}</td>"
+    output += "<td>#{quote.change} (#{quote.change_pct}%)</td>"
+    output += "<td>#{quote.last_time}</td>"
+    output += "<td>#{quote.name}</td>"
+    output += "</tr>"
+  output += '</table>'
+  $("#quote_table").html output
+
+tableUpdateJob = ->
+  tickers = ['SPY', 'AAPL', 'GOOG']
+  getQuotesCNBC(tickers, updateTable)
+  tid = setTimeout(tableUpdateJob, tableUpdateInterval)
+
+tableUpdateJob()
 
 ##########################################
 # Example code for putting ticker in title
