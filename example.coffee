@@ -149,12 +149,11 @@ printAll = ->
   $("#ticker_box").html header + items.join("") + footer
   return
 
-printQuote()
+#printQuote()
 
 
-newTitle = 'Example'
 # Get quote data from CNBC
-getQuoteCNBC = (tickers) ->
+getQuoteCNBC = (tickers, callback_func) ->
   url = "http://quote.cnbc.com/quote-html-webservice/quote.htm?symbols=#{tickers}&requestMethod=quick&fund=1&noform=1&exthrs=1&extMode=ALL&extendedMask=2&output=json"
   yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + url + '"') + '&format=json&callback=?'
 
@@ -174,6 +173,7 @@ getQuoteCNBC = (tickers) ->
       change = r2(data.change)
       last = r2(data.last)
       newTitle = "#{data.symbol}: #{last} #{change} (#{percentChange}%)"
+    callback_func(newTitle)
 
 # Example code for ticker box
 #$("#ticker_box").html "Ticker box goes here"
@@ -184,13 +184,18 @@ getQuoteCNBC = (tickers) ->
 $("#quote_table").html "Quote table goes here"
 
 # Example code for putting ticker in title
-updateTitle = ->
-  ticker = 'SPY'
-  getQuoteCNBC ticker
-  $(document).attr('title', newTitle)
-  tid2 = setTimeout(updateTitle, timeout)
+titleUpdateInterval = 2e3   # 2 seconds
 
-updateTitle()
+updateTitle = (newTitle) ->
+  $(document).attr('title', newTitle)
+
+titleUpdateLoop = ->
+  ticker = 'SPY'
+  getQuoteCNBC(ticker, updateTitle)
+  tid2 = setTimeout(titleUpdateLoop, titleUpdateInterval)
+
+
+titleUpdateLoop()
 
 # TODO List:
 # - Reformat CNBC and GF sources into common format
