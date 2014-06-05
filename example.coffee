@@ -151,51 +151,150 @@ printAll = ->
 
 #printQuote()
 
+# Get quote data from Google Finance
+getQuotesGoogle = (tickers, callback_func) ->
+  # Join ticker symbols together
+  tickersStr = tickers.join(',')
+
+  url = "http://www.google.com/finance/info?infotype=infoquoteall&q=#{tickersStr}&callback=?"
+  $.getJSON url, (data) ->
+    quotes = {}
+    quotes['tickers'] = []
+    for quote in data
+      symbol = quote.t
+      quotes['tickers'].push(symbol)
+      # Convert quote data to common format
+      output = {}
+      output['last'] = quote.l
+      output['last_time_str'] = quote.lt_dts
+      #output['open'] = quote.open
+      output['change'] = quote.c
+      output['change_pct'] = quote.cp
+      output['name'] = quote.t  # To be replaced
+      #output['volume'] = quote.volume
+      output['previous_close'] = quote.l - quote.c
+      #output['high'] = quote.high
+      #output['low'] = quote.low
+      output['exchange'] = quote.e
+
+      if 'el' of quote
+        output['extended'] = {}
+        output['extended']['last'] = quote.el
+        output['extended']['last_time_str'] = quote.elt
+        output['extended']['change'] = quote.ec
+        output['extended']['change_pct'] = quote.ecp
+        #output['extended']['volume'] = 
+        output['extended']['full_change'] = quote.ec + quote.c
+        #output['extended']['full_change_pct'] = quote.ecp
+
+      quotes[symbol] = output
+
+    callback_func(quotes)
 
 # Get quote data from CNBC
-getQuoteCNBC = (tickers, callback_func) ->
-  url = "http://quote.cnbc.com/quote-html-webservice/quote.htm?symbols=#{tickers}&requestMethod=quick&fund=1&noform=1&exthrs=1&extMode=ALL&extendedMask=2&output=json"
+getQuotesCNBC = (tickers, callback_func) ->
+  # Join ticker symbols together
+  # Add dummy ticker symbol if there's only one listed so that the quote data
+  # from CNBC will be returned as a list instead of being shifted up a level
+  if tickers.length == 1
+    tickers.push('FAKESYMBOL')
+  tickersStr = tickers.join('%7C')
+
+  url = "http://quote.cnbc.com/quote-html-webservice/quote.htm?symbols=#{tickersStr}&requestMethod=quick&fund=1&noform=1&exthrs=1&extMode=ALL&extendedMask=2&output=json"
   yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + url + '"') + '&format=json&callback=?'
 
   $.getJSON yql, (data) ->
-    items = []
+    quotes = {}
+    quotes['tickers'] = []
     data = $.parseJSON(data.query.results.body.p).QuickQuoteResult.QuickQuote
-    change = r2(data.change)
-    last = r2(data.last)
-    change_pct = Math.round(1e4 * +change / (+last - +change)) / 100
-    if data.hasOwnProperty("ExtendedMktQuote")
-      ah_change = r2(data.ExtendedMktQuote.change)
-      ah_last = r2(data.ExtendedMktQuote.last)
-      ah_change_pct = Math.round(1e4 * +ah_change / (+ah_last - +ah_change)) / 100
-      newTitle = "#{data.symbol}: #{ah_last} #{ah_change} (#{ah_change_pct}%),  "
-      newTitle = newTitle + "[Close] #{last} #{change} (#{change_pct}%)"
-    else
-      change = r2(data.change)
-      last = r2(data.last)
-      newTitle = "#{data.symbol}: #{last} #{change} (#{percentChange}%)"
-    callback_func(newTitle)
+    for quote in data
+      symbol = quote.symbol
+      if symbol == 'FAKESYMBOL'
+        continue
 
+      quotes['tickers'].push(symbol)
+      # Convert quote data to common format
+      output = {}
+      output['last'] = quote.last
+      output['last_time'] = quote.last_time
+      output['open'] = quote.open
+      output['change'] = quote.change
+      output['change_pct'] = quote.change_pct
+      output['name'] = quote.name
+      output['volume'] = quote.volume
+      output['previous_close'] = quote.previous_day_closing
+      output['high'] = quote.high
+      output['low'] = quote.low
+      output['exchange'] = quote.exchange
+      if "ExtendedMktQuote" of quote
+        extTime = new Date()
+        # Check if last_time < extended.last_time first
+        if "reg_last_time" of quote
+          time = new Date(Date.parse(quote.reg_last_time))
+        else
+          time = new Date(+quote.last_time_msec)
+        if "afthrs_last_time" of quote.ExtendedMktQuote
+          extTime.setTime Date.parse(quote.ExtendedMktQuote.afthrs_last_time)
+        else
+          extTime.setTime Date.parse(quote.ExtendedMktQuote.last_time)
+        if extTime.getTime() > time.getTime()
+          output['extended'] = {}
+          output['extended']['last'] = quote.ExtendedMktQuote.last
+          output['extended']['last_time'] = quote.ExtendedMktQuote.last_time
+          output['extended']['change'] = quote.ExtendedMktQuote.change
+          output['extended']['change_pct'] = quote.ExtendedMktQuote.change_pct
+          output['extended']['volume'] = quote.ExtendedMktQuote.volume
+          output['extended']['full_change'] = quote.ExtendedMktQuote.full_change
+          output['extended']['full_change_pct'] = quote.ExtendedMktQuote.full_change_pct
+
+      quotes[symbol] = output
+
+    callback_func(quotes)
+
+#############################
 # Example code for ticker box
+#############################
 #$("#ticker_box").html "Ticker box goes here"
 # TODO: Grab the quote data for AAPL and VXAPL separately, then use certain
 # pieces to build ticker box
 
+
+##############################
 # Example code for quote table
+##############################
 $("#quote_table").html "Quote table goes here"
 
+##########################################
 # Example code for putting ticker in title
+##########################################
 titleUpdateInterval = 2e3   # 2 seconds
 
-updateTitle = (newTitle) ->
+# Take the quote data retrieved and create a new window/tab title
+updateTitle = (quotes) ->
+  # Just grab the first ticker in the list for now
+  symbol = quotes.tickers[0]
+  quote = quotes[symbol]
+  last = r2(quote.last)
+  change = r2(quote.change)
+  change_pct = r2(quote.change_pct)
+  if 'extended' of quote
+    ext_last = r2(quote.extended.last)
+    ext_change = r2(quote.extended.change)
+    ext_change_pct = r2(quote.extended.change_pct)
+    newTitle = "#{symbol}: #{ext_last} #{ext_change} (#{ext_change_pct}%),  "
+    newTitle = newTitle + "[Close] #{last} #{change} (#{change_pct}%)"
+  else
+    newTitle = "#{symbol}: #{last} #{change} (#{change_pct}%)"
   $(document).attr('title', newTitle)
 
-titleUpdateLoop = ->
-  ticker = 'SPY'
-  getQuoteCNBC(ticker, updateTitle)
-  tid2 = setTimeout(titleUpdateLoop, titleUpdateInterval)
+titleUpdateJob = ->
+  tickers = ['SPY', 'AAPL', 'GOOG']
+  tickers = ['SPY']
+  #getQuotesCNBC(tickers, updateTitle)
+  getQuotesGoogle(tickers, updateTitle)
+  tid2 = setTimeout(titleUpdateJob, titleUpdateInterval)
 
-
-titleUpdateLoop()
+titleUpdateJob()
 
 # TODO List:
 # - Reformat CNBC and GF sources into common format
