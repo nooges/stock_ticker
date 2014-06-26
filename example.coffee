@@ -265,11 +265,12 @@ updateTable = (quotes) ->
   output = '<table>'
   for ticker in quotes.tickers
     quote = quotes[ticker]
+    time_str = moment(quote.last_time).format("MMM D, h:mm:ss A")
     output += "<tr>"
     output += "<td>#{ticker}</td>"
     output += "<td>#{r2(quote.last)}</td>"
     output += "<td>#{r2(quote.change)} (#{r2(quote.change_pct)}%)</td>"
-    output += "<td>#{quote.last_time}</td>"
+    output += "<td>#{time_str}</td>"
     output += "<td>#{quote.name}</td>"
     output += "</tr>"
   output += '</table>'
